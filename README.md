@@ -1,0 +1,1 @@
+# sinya-loyalty-v7_66_full_v11
