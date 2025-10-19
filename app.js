@@ -1,14 +1,9 @@
-/* v7.66.2 — No monthly KPI; all annual-level formulas */
+/* v7.66.3 — Annual Sales derived from tiers */
 (function(){
   const $ = (id)=>document.getElementById(id);
-  const n = (v)=>{
-    const t = (v??'').toString().replace(/[, \u00A0]/g,'');
-    if(t==='') return 0;
-    const x = Number(t);
-    return isFinite(x) ? x : 0;
-  };
-  const fmt = (x)=> (x==null || !isFinite(x)) ? '—' : x.toLocaleString(undefined,{maximumFractionDigits:2});
-  const pct = (x)=> (x==null || !isFinite(x)) ? '—' : (x*100).toFixed(2)+'%';
+  const n = (v)=>{ const t=(v??'').toString().replace(/[, \u00A0]/g,''); if(t==='') return 0; const x=Number(t); return isFinite(x)?x:0; };
+  const fmt = (x)=> (x==null||!isFinite(x)) ? '—' : x.toLocaleString(undefined,{maximumFractionDigits:2});
+  const pct = (x)=> (x==null||!isFinite(x)) ? '—' : (x*100).toFixed(2)+'%';
 
   // Levels
   const levelsTbody = document.querySelector('#tbl_levels tbody');
@@ -26,7 +21,7 @@
     levelsTbody.appendChild(tr);
   }
   $('add_level').onclick = ()=> addLevelRow({level:'L'+(levelsTbody.children.length+1), members:0, asp:0, cbCash:0, cbCard:0});
-  addLevelRow(); // initial
+  addLevelRow(); // initial row
 
   // Campaigns (annual-level)
   const campTbody = document.querySelector('#tbl_campaigns tbody');
@@ -59,6 +54,16 @@
     return {pCash: a/s, pCard: b/s};
   }
 
+  function deriveSalesBaseFromTiers(){
+    let base = 0;
+    levelsTbody.querySelectorAll('tr').forEach(tr=>{
+      const members = n(tr.children[1].querySelector('input').value);
+      const asp     = n(tr.children[2].querySelector('input').value);
+      base += members * asp;
+    });
+    return base;
+  }
+
   function purchaseRebate(pCash, pCard){
     let sum = 0;
     levelsTbody.querySelectorAll('tr').forEach(tr=>{
@@ -80,7 +85,6 @@
     const refR    = n($('ref_referrer').value);
     const refI    = n($('ref_invitee').value);
     const refN    = n($('ref_orders').value);
-
     const birthday = bdayAmt * bdayP * mems;
     const ugcY     = ugcM * 12;
     const referral = (refR + refI) * refN;
@@ -122,7 +126,7 @@
     const GM   = n($('gm').value)/100;
     const fee  = n($('cardfee').value)/100;
     const {pCash, pCard} = normalizedShares();
-    const SalesBase = n($('sales_actual').value);
+    const SalesBase = deriveSalesBaseFromTiers(); // ★ 由等級推導
     const SalesTgt  = n($('sales_target').value);
     const GPTgt     = n($('gp_target').value);
     const OtherMkt  = n($('other_mkt').value);
@@ -160,6 +164,7 @@
     document.getElementById('out_sales_attain').textContent = SalesAttain==null?'—':pct(SalesAttain);
     document.getElementById('out_net_vs_gptarget').textContent = NetVsGPTarget==null?'—':pct(NetVsGPTarget);
 
+    // identity check
     const rhs = Net + RebateTotal + CardFee + CampCost + OtherMkt + Shipping;
     const diff = GPYear - rhs;
     if (Math.abs(diff) > 1){

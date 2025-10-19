@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sinya Loyalty v7.66.2（無逐月KPI）</title>
+  <title>Sinya Loyalty v7.66.3（年實際Sales=等級×ASP）</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <header>
-  <h1>Sinya Loyalty v7.66.2（無逐月KPI）</h1>
-  <p>移除「五、逐月KPI」，所有公式改為年度層級連動計算（含活動 uplift、運費、等級回饋、刷卡費、Net）。</p>
+  <h1>Sinya Loyalty v7.66.3</h1>
+  <p>年度實際 Sales 由「四、會員等級與購買回饋」自動推導（Σ 等級人數 × ASP），不再手動輸入。</p>
 </header>
 
 <main>
+  <!-- 核心參數 -->
   <section class="card">
     <h2>一、核心參數</h2>
     <div class="grid">
@@ -24,17 +25,18 @@
     <p class="hint">占比會自動正規化為 100%。所有％以整數輸入，運算自動 ÷100。</p>
   </section>
 
+  <!-- 年度目標與固定費（移除手動輸入的年度實際Sales） -->
   <section class="card">
-    <h2>二、年度 KPI（年度層級）</h2>
+    <h2>二、年度 KPI（目標 / 固定費）</h2>
     <div class="grid">
-      <label>年度實際 Sales（含稅，基準）<input id="sales_actual" type="number" step="1" placeholder="10000000"></label>
       <label>年度目標營收（含稅）<input id="sales_target" type="number" step="1" placeholder="12000000"></label>
       <label>年度目標毛利（GP 目標）<input id="gp_target" type="number" step="1" placeholder="300000"></label>
       <label>其他固定行銷費（年）<input id="other_mkt" type="number" step="1" placeholder="50000"></label>
     </div>
-    <p class="hint">注意：活動 uplift 將作用在「年度實際 Sales（基準）」上。</p>
+    <p class="hint">實際 Sales 由「四、會員等級與購買回饋」計算，不需手動輸入。</p>
   </section>
 
+  <!-- 活動（年度層級 uplift） -->
   <section class="card">
     <h2>三、活動（年度層級 uplift%）</h2>
     <div class="table-wrap">
@@ -51,6 +53,7 @@
     <p class="hint">uplift 合併計算（加總模型）：總乘數 = 1 + Σ(all) + Σ(cash) + Σ(card)。刷卡費基礎僅計入 Σ(all)+Σ(card)。</p>
   </section>
 
+  <!-- 等級與購買回饋 -->
   <section class="card">
     <h2>四、會員等級與購買回饋</h2>
     <div class="table-wrap">
@@ -80,6 +83,7 @@
     </details>
   </section>
 
+  <!-- 運費 -->
   <section class="card">
     <h2>五、運費</h2>
     <div class="grid">
@@ -89,6 +93,7 @@
     <p class="hint">運費 = 件數 × 每件金額（列入 Net 扣除）。</p>
   </section>
 
+  <!-- 總結 -->
   <section class="card">
     <h2>六、總結結果（年度層級連動）</h2>
     <div class="results">
@@ -113,7 +118,7 @@
   </section>
 </main>
 
-<footer><p>© 2025 Sinya Loyalty v7.66.2</p></footer>
+<footer><p>© 2025 Sinya Loyalty v7.66.3</p></footer>
 
 <script src="app.js"></script>
 </body>
