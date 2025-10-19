@@ -4,6 +4,21 @@
   const n = (v)=>{ const t=(v??'').toString().replace(/[, \u00A0]/g,''); if(t==='') return 0; const x=Number(t); return isFinite(x)?x:0; };
   const fmt = (x)=> (x==null||!isFinite(x)) ? '—' : x.toLocaleString(undefined,{maximumFractionDigits:2});
   const pct = (x)=> (x==null||!isFinite(x)) ? '—' : (x*100).toFixed(2)+'%';
+  // Permanently use multiplicative uplift: ensure toggle is removed/hidden if present
+  (function(){ const chk=document.getElementById('use_multiplicative'); if(chk){ try{ chk.checked=true; const w=chk.closest('.chk'); if(w) w.remove(); }catch(e){} }})();
+  // === Sum total members from levels (linked total) ===
+  function computeTotalMembersFromLevels(){
+    const tbody = document.querySelector('#tbl_levels tbody');
+    let total = 0;
+    if (!tbody) return 0;
+    tbody.querySelectorAll('tr').forEach(tr=>{
+      const inp = tr.children[1]?.querySelector('input');
+      const v = Number((inp?.value || '0').toString().replace(/[, \u00A0]/g,''));
+      total += isFinite(v) ? v : 0;
+    });
+    return total;
+  }
+
 
   // Levels
   const levelsTbody = document.querySelector('#tbl_levels tbody');
@@ -17,8 +32,25 @@
       <td><input type="number" step="0.01" value="${data.cbCard}"></td>
       <td><button class="ghost del">刪除</button></td>
     `;
-    tr.querySelector('.del').onclick = ()=> tr.remove();
+    tr.querySelector('.del').onclick = ()=> { tr.remove(); const b=document.getElementById('members_total_auto'); if(b) b.value=computeTotalMembersFromLevels(); };
     levelsTbody.appendChild(tr);
+    try{
+      const membersInput = tr.children[1]?.querySelector('input');
+      if (membersInput){
+        const syncTotal = ()=>{ const b=document.getElementById('members_total_auto'); if(b) b.value=computeTotalMembersFromLevels(); };
+        membersInput.addEventListener('input', syncTotal, true);
+        membersInput.addEventListener('change', syncTotal, true);
+      }
+    }catch(e){}
+    // keep total synced when members value changes
+    try{
+      const membersInput = tr.children[1]?.querySelector('input');
+      if (membersInput){
+        const syncTotal = ()=>{ const b=document.getElementById('members_total_auto'); if(b) b.value=computeTotalMembersFromLevels(); };
+        membersInput.addEventListener('input', syncTotal, true);
+        membersInput.addEventListener('change', syncTotal, true);
+      }
+    }catch(e){}
   }
   $('add_level').onclick = ()=> addLevelRow({level:'L'+(levelsTbody.children.length+1), members:0, asp:0, cbCash:0, cbCard:0});
   addLevelRow(); // initial row
@@ -40,7 +72,7 @@
       <td><input type="number" step="1" value="${data.cost}"></td>
       <td><button class="ghost del">刪除</button></td>
     `;
-    tr.querySelector('.del').onclick = ()=> tr.remove();
+    tr.querySelector('.del').onclick = ()=> { tr.remove(); const b=document.getElementById('members_total_auto'); if(b) b.value=computeTotalMembersFromLevels(); };
     campTbody.appendChild(tr);
   }
   $('add_campaign').onclick = ()=> addCampaignRow({name:'活動'+(campTbody.children.length+1), uplift:0, scope:'all', cost:0});
@@ -77,53 +109,62 @@
     return sum;
   }
 
+  
   function otherRebates(){
-    const bdayAmt = n($('bday_amt').value);
-    const bdayP   = n($('bday_part').value)/100;
-    const mems    = n($('members_total').value);
-    const ugcM    = n($('ugc_month').value);
-    const refR    = n($('ref_referrer').value);
-    const refI    = n($('ref_invitee').value);
-    const refN    = n($('ref_orders').value);
+    const $ = (id)=>document.getElementById(id);
+    const num = (v)=>{ const t=(v??'').toString().replace(/[, \u00A0]/g,''); const x=Number(t); return isFinite(x)?x:0; };
+
+    // ★ Use total members derived from levels
+    const mems = computeTotalMembersFromLevels();
+
+    // Sync to read-only display & legacy input if present
+    const auto = document.getElementById('members_total_auto');
+    if (auto) auto.value = mems;
+    const legacy = document.getElementById('members_total');
+    if (legacy){ legacy.value = mems; legacy.dispatchEvent(new Event('input', {bubbles:true})); legacy.dispatchEvent(new Event('change', {bubbles:true})); }
+
+    const bdayAmt = num($('bday_amt')?.value);
+    const bdayP   = num($('bday_part')?.value)/100;
+    const ugcM    = num($('ugc_month')?.value);
+    const refR    = num($('ref_referrer')?.value);
+    const refI    = num($('ref_invitee')?.value);
+    const refN    = num($('ref_orders')?.value);
+
     const birthday = bdayAmt * bdayP * mems;
     const ugcY     = ugcM * 12;
     const referral = (refR + refI) * refN;
     return (birthday||0)+(ugcY||0)+(referral||0);
   }
 
+  }
+
+  
   function sumCampaigns(){
-    let cost = 0, uAll=0, uCash=0, uCard=0;
-    const multiplicative = document.getElementById('use_multiplicative').checked;
-    const ups = [];
-    campTbody.querySelectorAll('tr').forEach(tr=>{
-      const r   = n(tr.children[1].querySelector('input').value) / 100;
-      const sc  = tr.children[2].querySelector('select').value;
-      const cs  = n(tr.children[3].querySelector('input').value);
-      cost += cs;
-      ups.push({r, sc});
+    let cost = 0;
+    let mAll=1, mCash=1, mCard=1;
+    const campTbody = document.querySelector('#tbl_campaigns tbody');
+    (campTbody ? Array.from(campTbody.querySelectorAll('tr')) : []).forEach(tr=>{
+      const r   = Number((tr.children[1]?.querySelector('input')?.value || '0').toString().replace(/[, \u00A0]/g,'')) / 100;
+      const sc  = tr.children[2]?.querySelector('select')?.value || 'all';
+      const cs  = Number((tr.children[3]?.querySelector('input')?.value || '0').toString().replace(/[, \u00A0]/g,''));
+      if (isFinite(cs)) cost += cs;
+      const rate = isFinite(r) ? r : 0;
+      if (sc==='all')  mAll  *= (1 + rate);
+      if (sc==='cash') mCash *= (1 + rate);
+      if (sc==='card') mCard *= (1 + rate);
     });
-    if (multiplicative){
-      let mAll=1, mCash=1, mCard=1;
-      ups.forEach(x=>{
-        if(x.sc==='all') mAll *= (1+x.r);
-        if(x.sc==='cash') mCash *= (1+x.r);
-        if(x.sc==='card') mCard *= (1+x.r);
-      });
-      uAll  = mAll - 1;
-      uCash = mCash - 1;
-      uCard = mCard - 1;
-    }else{
-      ups.forEach(x=>{
-        if(x.sc==='all') uAll += x.r;
-        if(x.sc==='cash') uCash += x.r;
-        if(x.sc==='card') uCard += x.r;
-      });
-    }
+    const uAll  = mAll  - 1;
+    const uCash = mCash - 1;
+    const uCard = mCard - 1;
+    return { cost, uAll, uCash, uCard };
+  }
     return {cost, uAll, uCash, uCard};
   }
 
   function calc(){
     const GM   = n($('gm').value)/100;
+    (function(){ const _b=document.getElementById('members_total_auto'); if(_b) _b.value=computeTotalMembersFromLevels(); })();
+    (function(){ const _b=document.getElementById('members_total_auto'); if(_b) _b.value=computeTotalMembersFromLevels(); })();
     const fee  = n($('cardfee').value)/100;
     const {pCash, pCard} = normalizedShares();
     const SalesBase = deriveSalesBaseFromTiers(); // ★ 由等級推導
