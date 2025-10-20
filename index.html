@@ -1,125 +1,131 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sinya Loyalty v7.66.3（年實際Sales=等級×ASP）</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <title>Sinya Loyalty Dashboard (Fixed)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.5;margin:24px;color:#111}
+    h1{font-size:22px;margin:0 0 16px}
+    h2{font-size:18px;margin:24px 0 12px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+    label{display:flex;flex-direction:column;font-size:12px;color:#444}
+    input,select,button{padding:8px;border:1px solid #ccc;border-radius:8px;font-size:14px}
+    button{cursor:pointer;background:#0ea5e9;color:#fff;border:none}
+    button.secondary{background:#64748b}
+    button.danger{background:#ef4444}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{border:1px solid #ddd;padding:8px;font-size:14px;text-align:right}
+    th:first-child, td:first-child{text-align:center;width:60px}
+    th:nth-child(2), td:nth-child(2){text-align:right}
+    th{background:#f8fafc;color:#334155}
+    .table-wrap{overflow:auto;border:1px solid #e5e7eb;border-radius:8px;padding:8px;background:#fff}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+    .outbox{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+    .card{border:1px solid #e5e7eb;border-radius:10px;padding:12px;background:#fff}
+    .value{font-weight:700;font-size:18px;margin-top:6px}
+    .muted{color:#64748b}
+    .note{font-size:12px;color:#6b7280}
+  </style>
 </head>
 <body>
-<header>
-  <h1>Sinya Loyalty v7.66.3</h1>
-  <p>年度實際 Sales 由「四、會員等級與購買回饋」自動推導（Σ 等級人數 × ASP），不再手動輸入。</p>
-</header>
+  <h1>Sinya Loyalty Dashboard（Fixed 版）</h1>
+  <h2>一、基本參數</h2>
+  <div class="grid">
+    <label>毛利率 %（GM）
+      <input id="gm" type="number" placeholder="例如 20" />
+    </label>
+    <label>現金占比 %
+      <input id="pcash" type="number" placeholder="例如 50" />
+    </label>
+    <label>刷卡占比 %
+      <input id="pcard" type="number" placeholder="例如 50" />
+    </label>
+    <label>刷卡費率 %
+      <input id="cardfee" type="number" placeholder="例如 1.8" />
+    </label>
+    <label>其他固定行銷費（年）
+      <input id="other_mkt" type="number" placeholder="例如 300000" />
+    </label>
+    <label class="muted">uplift 使用「複利相乘」
+      <input id="use_multiplicative" type="checkbox" checked />
+    </label>
+  </div>
 
-<main>
-  <!-- 核心參數 -->
-  <section class="card">
-    <h2>一、核心參數</h2>
-    <div class="grid">
-      <label>毛利率（GM%）<input id="gm" type="number" step="0.01" placeholder="20"></label>
-      <label>現金付款占比（%）<input id="pcash" type="number" step="0.01" placeholder="50"></label>
-      <label>刷卡付款占比（%）<input id="pcard" type="number" step="0.01" placeholder="50"></label>
-      <label>刷卡手續費率（%）<input id="cardfee" type="number" step="0.01" placeholder="1.8"></label>
-    </div>
-    <p class="hint">占比會自動正規化為 100%。所有％以整數輸入，運算自動 ÷100。</p>
-  </section>
+  <h2>二、運費（可選）</h2>
+  <div class="grid">
+    <label>運送件數
+      <input id="ship_count" type="number" placeholder="0" />
+    </label>
+    <label>每件金額
+      <input id="ship_unit" type="number" placeholder="0" />
+    </label>
+  </div>
 
-  <!-- 年度目標與固定費（移除手動輸入的年度實際Sales） -->
-  <section class="card">
-    <h2>二、年度 KPI（目標 / 固定費）</h2>
-    <div class="grid">
-      <label>年度目標營收（含稅）<input id="sales_target" type="number" step="1" placeholder="12000000"></label>
-      <label>年度目標毛利（GP 目標）<input id="gp_target" type="number" step="1" placeholder="300000"></label>
-      <label>其他固定行銷費（年）<input id="other_mkt" type="number" step="1" placeholder="50000"></label>
-    </div>
-    <p class="hint">實際 Sales 由「四、會員等級與購買回饋」計算，不需手動輸入。</p>
-  </section>
-
-  <!-- 活動（年度層級 uplift） -->
-  <section class="card">
-    <h2>三、活動（年度層級 uplift%）</h2>
-    <div class="table-wrap">
-      <table id="tbl_campaigns">
-        <thead>
+  <h2>三、會員等級與購買回饋</h2>
+  <div class="toolbar">
+    <button id="btn_add_level">＋新增等級</button>
+  </div>
+  <div class="table-wrap">
+    <table id="tbl_levels">
+      <thead>
         <tr>
-          <th>名稱</th><th>uplift%</th><th>影響支付</th><th>成本</th><th>刪除</th>
+          <th>等級</th>
+          <th>人數</th>
+          <th>年均消費 ASP</th>
+          <th>現金回饋%</th>
+          <th>刷卡回饋%</th>
+          <th>刪除</th>
         </tr>
-        </thead>
-        <tbody></tbody>
-        <tfoot><tr><td colspan="5"><button id="add_campaign">＋新增活動</button></td></tr></tfoot>
-      </table>
-    </div>
-    <p class="hint">uplift 合併計算（加總模型）：總乘數 = 1 + Σ(all) + Σ(cash) + Σ(card)。刷卡費基礎僅計入 Σ(all)+Σ(card)。</p>
-  </section>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="grid" style="margin-top:8px">
+    <label>會員人數（總，連動等級）
+      <input id="members_total_auto" type="number" disabled placeholder="自動計算" />
+    </label>
+  </div>
 
-  <!-- 等級與購買回饋 -->
-  <section class="card">
-    <h2>四、會員等級與購買回饋</h2>
-    <div class="table-wrap">
-      <table id="tbl_levels">
-        <thead>
+  <h2>四、活動設定（uplift）</h2>
+  <div class="toolbar">
+    <button id="btn_add_campaign">＋新增活動</button>
+  </div>
+  <div class="table-wrap">
+    <table id="tbl_campaigns">
+      <thead>
         <tr>
-          <th>等級</th><th>人數</th><th>年均消費 ASP</th><th>現金回饋%</th><th>刷卡回饋%</th><th>刪除</th>
+          <th>#</th>
+          <th>uplift %</th>
+          <th>影響支付</th>
+          <th>活動成本</th>
+          <th>刪除</th>
         </tr>
-        </thead>
-        <tbody></tbody>
-        <tfoot>
-        <tr><td colspan="6"><button id="add_level">＋新增等級</button></td></tr>
-        </tfoot>
-      </table>
-    </div>
-    <details>
-      <summary>其他回饋（生日 / UGC / 推薦）</summary>
-      <div class="grid">
-        <label>生日回饋（每人）<input id="bday_amt" type="number" step="1" placeholder="100"></label>
-        <label>生日參與率（%）<input id="bday_part" type="number" step="0.01" placeholder="10"></label>
-        <label>總會員數（人）<input id="members_total" type="number" step="1" placeholder="1000"></label>
-        <label>UGC（每月）<input id="ugc_month" type="number" step="1" placeholder="10000"></label>
-        <label>推薦（邀請人/單）<input id="ref_referrer" type="number" step="1" placeholder="100"></label>
-        <label>推薦（被邀請人/單）<input id="ref_invitee" type="number" step="1" placeholder="100"></label>
-        <label>推薦訂單數（年）<input id="ref_orders" type="number" step="1" placeholder="50"></label>
-      </div>
-    </details>
-  </section>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 
-  <!-- 運費 -->
-  <section class="card">
-    <h2>五、運費</h2>
-    <div class="grid">
-      <label>件數（pcs）<input id="ship_count" type="number" step="1" placeholder="0"></label>
-      <label>每件金額（含稅）<input id="ship_unit" type="number" step="1" placeholder="0"></label>
-    </div>
-    <p class="hint">運費 = 件數 × 每件金額（列入 Net 扣除）。</p>
-  </section>
+  <h2>五、操作</h2>
+  <div class="toolbar">
+    <button id="btn_calc">立即計算</button>
+    <button id="btn_reset" class="secondary">重置</button>
+  </div>
 
-  <!-- 總結 -->
-  <section class="card">
-    <h2>六、總結結果（年度層級連動）</h2>
-    <div class="results">
-      <div><span>現金/刷卡占比（正規化）</span><strong id="norm_share">-</strong></div>
-      <div><span>年 Sales（uplift 後合計）</span><strong id="out_sales">-</strong></div>
-      <div><span>年 GP</span><strong id="out_gp">-</strong></div>
-      <div><span>回饋（購買＋生日＋UGC＋推薦）</span><strong id="out_rebate">-</strong></div>
-      <div><span>刷卡費</span><strong id="out_cardfee">-</strong></div>
-      <div><span>活動成本（合計）</span><strong id="out_campaign">-</strong></div>
-      <div><span>其他固定行銷費</span><strong id="out_othermkt">-</strong></div>
-      <div><span>運費</span><strong id="out_shipping">-</strong></div>
-      <div class="net"><span>淨效益（Net）</span><strong id="out_net">-</strong></div>
-      <div><span>營收達成率</span><strong id="out_sales_attain">-</strong></div>
-      <div><span>Net / 目標毛利</span><strong id="out_net_vs_gptarget">-</strong></div>
-    </div>
-    <div class="actions">
-      <button id="btn_calc">立即計算</button>
-      <button id="btn_reset" class="ghost">重置</button>
-      <label class="chk"><input type="checkbox" id="use_multiplicative"> uplift 使用「複利相乘」</label>
-    </div>
-    <p class="hint small">恒等式自檢：GP ?= Net + 回饋 + 刷卡費 + 活動 + 其他行銷 + 運費（若不平衡會在 Console 顯示差額）。</p>
-  </section>
-</main>
+  <h2>六、年度匯總</h2>
+  <div class="outbox">
+    <div class="card"><div class="muted">年 Sales（uplift 後合計）</div><div id="out_sales" class="value">-</div></div>
+    <div class="card"><div class="muted">年 GP</div><div id="out_gp" class="value">-</div></div>
+    <div class="card"><div class="muted">回饋（購買＋其他）</div><div id="out_rebates" class="value">-</div></div>
+    <div class="card"><div class="muted">刷卡費</div><div id="out_cardfee" class="value">-</div></div>
+    <div class="card"><div class="muted">活動成本（合計）</div><div id="out_campcost" class="value">-</div></div>
+    <div class="card"><div class="muted">其他固定行銷費</div><div id="out_other" class="value">-</div></div>
+    <div class="card"><div class="muted">運費</div><div id="out_ship" class="value">-</div></div>
+    <div class="card"><div class="muted">淨效益（Net）</div><div id="out_net" class="value">-</div></div>
+  </div>
 
-<footer><p>© 2025 Sinya Loyalty v7.66.3</p></footer>
+  <p class="note">提示：按「＋新增等級」與「＋新增活動」建立資料，再按「立即計算」。</p>
 
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
